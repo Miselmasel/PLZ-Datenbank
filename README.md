@@ -1,11 +1,14 @@
 # Deutsche PLZ-Datenbank (PLZ ↔ Ort ↔ Bundesland)
 
+[![Tests](https://github.com/Miselmasel/PLZ-Datenbank/actions/workflows/tests.yml/badge.svg)](https://github.com/Miselmasel/PLZ-Datenbank/actions/workflows/tests.yml)
+
 Enthält:
 
 - **`schema.sql`** – normalisiertes SQL-Schema (SQLite, mit Hinweisen für PostgreSQL/MySQL)
 - **`import_plz_data.py`** – Python-Skript, das eine öffentliche CSV lädt, bereinigt, Mehrfachzuordnungen (mehrere Orte pro PLZ) zusammenfasst und in die Datenbank importiert
+- **`tests/`** – automatisierte Tests (pytest), die bei jedem Push/Pull-Request per GitHub Actions laufen
 
-Keine externen Abhängigkeiten nötig – nur die Python-Standardbibliothek (`csv`, `sqlite3`, `urllib`, `zipfile`).
+Keine externen Abhängigkeiten für den Betrieb nötig – nur die Python-Standardbibliothek (`csv`, `sqlite3`, `urllib`, `zipfile`). Für die Tests wird lediglich `pytest` benötigt.
 
 ## Datenmodell
 
@@ -99,6 +102,22 @@ WHERE o.name = 'Westoverledingen';
 -- Schnelle Liste über die View
 SELECT * FROM v_plz_orte WHERE plz = '26810';
 ```
+
+## Tests
+
+```bash
+pip install pytest
+pytest -v
+```
+
+Die Tests arbeiten mit kleinen, lokalen Beispieldaten (kein Netzwerkzugriff) und prüfen:
+
+- Bereinigungsfunktionen (`clean_plz`, `clean_text`, `clean_float`)
+- Beide CSV-Parser (suche-postleitzahl.org- und GeoNames-Format), inkl. Dublettenfilter und Mehrfachzuordnung
+- Den kompletten Datenbankaufbau aus `schema.sql` inkl. der 1:n-Relation und der View `v_plz_orte`
+- Die `CHECK`-Constraint der PLZ-Spalte
+
+Die GitHub-Actions-Workflow-Datei [`.github/workflows/tests.yml`](.github/workflows/tests.yml) führt diese Tests automatisch bei jedem Push und Pull-Request auf `main` aus (Python 3.10–3.13) und prüft zusätzlich, dass `schema.sql` fehlerfrei ausgeführt werden kann.
 
 ## Lizenzhinweis
 
