@@ -1,4 +1,6 @@
-plz_datenbank.sqlite3
 *.pyc
 __pycache__/
 *.zip
+*.sqlite3.tmp
+backups/
+.pytest_cache/

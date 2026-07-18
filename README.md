@@ -69,6 +69,60 @@ python import_plz_data.py DE.zip
 Ergebnis: `plz_datenbank.sqlite3` im selben Verzeichnis. Das Skript druckt am
 Ende automatisch drei Beispielabfragen zur Kontrolle.
 
+## Regelmäßige automatische Aktualisierung
+
+`update_plz_datenbank.py` hält `plz_datenbank.sqlite3` dauerhaft aktuell und
+ist für wiederholte, unbeaufsichtigte Ausführung gebaut (Cron, Task Scheduler,
+GitHub Actions):
+
+```bash
+python update_plz_datenbank.py                  # automatische Quellenwahl
+python update_plz_datenbank.py --csv datei.csv   # lokale CSV/ZIP erzwingen
+python update_plz_datenbank.py --force           # Sicherheitscheck überspringen
+```
+
+Was dabei passiert:
+
+1. Lädt frische Daten (gleiche Quellen-Logik wie `import_plz_data.py`).
+2. Baut daraus eine **neue** Datenbank in einer temporären Datei – die
+   produktive Datenbank bleibt währenddessen unangetastet.
+3. **Sicherheitscheck:** Fällt die neue Datenbank drastisch kleiner aus als
+   die bisherige (Standard: weniger als 90 % der Orte-Zeilen), wird der
+   Austausch abgebrochen (Exit-Code 1) – das schützt vor einer defekten oder
+   unvollständigen Quelle. Mit `--force` lässt sich das übergehen.
+4. Legt vor jedem Austausch ein Backup der alten Datenbank in `backups/` an
+   (rotierend, Standard: die letzten 5 Läufe) und tauscht dann atomar.
+5. Protokolliert jeden Lauf als eine Zeile in `update_log.jsonl`
+   (Zeitstempel, Quelle, Kennzahlen vorher/nachher, Status).
+
+Exit-Code `0` = erfolgreich aktualisiert oder unverändert, `1` = Fehler/Abbruch.
+
+### Automatisch per Cron/Task Scheduler
+
+```bash
+# Linux/macOS (crontab -e), jeden Montag 06:00 Uhr:
+0 6 * * 1 cd /pfad/zum/repo && /usr/bin/python3 update_plz_datenbank.py >> logs/cron.log 2>&1
+```
+
+Unter Windows lässt sich dieselbe Datei über die Aufgabenplanung (Task
+Scheduler) mit `python.exe` als Aktion und dem Skriptpfad als Argument
+einrichten.
+
+### Automatisch per GitHub Actions
+
+Die Workflow-Datei [`.github/workflows/update-database.yml`](.github/workflows/update-database.yml)
+führt `update_plz_datenbank.py` standardmäßig **jeden Montag 04:00 UTC**
+aus (per `cron`-Ausdruck anpassbar, z.B. täglich oder monatlich) und lässt
+sich zusätzlich jederzeit manuell über "Run workflow" im Actions-Tab
+starten. Ändert sich die Datenbank, committet und pusht der Workflow
+`plz_datenbank.sqlite3` sowie `update_log.jsonl` automatisch zurück ins
+Repository; bei einem Abbruch/Fehler schlägt der Workflow-Lauf sichtbar fehl.
+
+> Hinweis: Dadurch wandert die kompilierte SQLite-Datei ins Git-Verlaufsprotokoll.
+> Bei sehr häufigen Läufen (z.B. täglich über Jahre) wächst die Repo-Größe
+> entsprechend. Wer das vermeiden will, kann den Commit/Push-Schritt im
+> Workflow durch einen Upload als GitHub-Release-Asset ersetzen.
+
 ## Bereinigung, die das Skript durchführt
 
 - PLZ wird auf exakt 5 Ziffern normalisiert (führende Nullen bleiben erhalten,
