@@ -2,8 +2,11 @@
 
 Statisches Web-Werkzeug für die Umkreissuche von Postleitzahlen. Man gibt eine
 Postleitzahl und einen Radius (in km) ein und erhält alle Postleitzahlen/Orte
-im Umkreis, sortiert nach Luftlinien-Entfernung — inklusive Bundesland und
-Einwohnerzahl (in Tausend).
+im Umkreis — inklusive Bundesland, Luftlinien-Entfernung und Einwohnerzahl
+(in Tausend). Die Ergebnisse lassen sich nach PLZ, Entfernung oder
+Einwohnerzahl (auf- oder absteigend) sortieren und als CSV-Datei
+herunterladen (Semikolon-getrennt, UTF-8 mit BOM, deutsches Zahlenformat —
+öffnet direkt korrekt in Excel).
 
 ## Funktionsweise
 

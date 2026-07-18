@@ -18,11 +18,21 @@
     stateResults: document.getElementById("state-results"),
     resultsSummary: document.getElementById("results-summary"),
     resultsTbody: document.getElementById("results-tbody"),
+    sortSelect: document.getElementById("sort-select"),
+    sortDirection: document.getElementById("sort-direction"),
+    btnCsv: document.getElementById("btn-csv"),
   };
 
   let dataset = null; // Array<{plz, ort, bundesland, lat, lon, einwohner}>
   let datasetPromise = null;
   let byPlz = null;
+
+  // Letzte Suche merken, damit Sortieren/CSV-Export ohne Neuberechnung funktionieren.
+  let lastMatches = null;
+  let lastOriginPlz = null;
+  let lastRadiusKm = null;
+  let sortField = "distanceKm"; // "distanceKm" | "plz" | "einwohner"
+  let sortDir = "asc"; // "asc" | "desc"
 
   // ---------------- Theme ----------------
 
@@ -107,6 +117,93 @@
     els.formError.textContent = message;
   }
 
+  // ---------------- Sorting ----------------
+
+  function sortComparator(field) {
+    switch (field) {
+      case "plz":
+        return (a, b) => a.plz.localeCompare(b.plz);
+      case "einwohner":
+        return (a, b) => a.einwohner - b.einwohner;
+      case "distanceKm":
+      default:
+        return (a, b) => a.distanceKm - b.distanceKm;
+    }
+  }
+
+  function sortMatches(matches, field, dir) {
+    const sorted = matches.slice().sort(sortComparator(field));
+    if (dir === "desc") sorted.reverse();
+    return sorted;
+  }
+
+  function applySortAndRender() {
+    if (!lastMatches) return;
+    const sorted = sortMatches(lastMatches, sortField, sortDir);
+    renderResults(lastOriginPlz, lastRadiusKm, sorted);
+  }
+
+  els.sortSelect.addEventListener("change", () => {
+    sortField = els.sortSelect.value;
+    applySortAndRender();
+  });
+
+  els.sortDirection.addEventListener("click", () => {
+    sortDir = sortDir === "asc" ? "desc" : "asc";
+    els.sortDirection.dataset.dir = sortDir;
+    els.sortDirection.setAttribute(
+      "aria-label",
+      "Sortierrichtung umschalten (aktuell " + (sortDir === "asc" ? "aufsteigend" : "absteigend") + ")"
+    );
+    applySortAndRender();
+  });
+
+  // ---------------- CSV-Export ----------------
+
+  function toCsvValue(value) {
+    const str = String(value);
+    if (/[;"\n]/.test(str)) {
+      return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+  }
+
+  function buildCsv(originPlz, matches) {
+    const header = ["PLZ", "Ort", "Bundesland", "Entfernung (km)", "Einwohner (Tsd.)"];
+    const lines = [header.join(";")];
+
+    for (const m of matches) {
+      const distance = m.plz === originPlz ? 0 : m.distanceKm;
+      const row = [
+        m.plz,
+        m.ort,
+        m.bundesland,
+        numberFmtDistance.format(distance),
+        formatEinwohnerTausend(m.einwohner),
+      ];
+      lines.push(row.map(toCsvValue).join(";"));
+    }
+
+    return lines.join("\r\n");
+  }
+
+  function downloadCsv() {
+    if (!lastMatches) return;
+    const sorted = sortMatches(lastMatches, sortField, sortDir);
+    const csv = buildCsv(lastOriginPlz, sorted);
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "plz-umkreissuche_" + lastOriginPlz + "_" + lastRadiusKm + "km.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  els.btnCsv.addEventListener("click", downloadCsv);
+
   // ---------------- Rendering ----------------
 
   function renderResults(originPlz, radiusKm, matches) {
@@ -169,14 +266,20 @@
         matches.push({ ...row, distanceKm });
       }
     }
-    matches.sort((a, b) => a.distanceKm - b.distanceKm);
-
     if (matches.length === 0) {
+      lastMatches = null;
+      lastOriginPlz = null;
+      lastRadiusKm = null;
       showState("no-match");
       return;
     }
 
-    renderResults(plz, radiusKm, matches);
+    lastMatches = matches;
+    lastOriginPlz = plz;
+    lastRadiusKm = radiusKm;
+
+    const sorted = sortMatches(matches, sortField, sortDir);
+    renderResults(plz, radiusKm, sorted);
   }
 
   // ---------------- Form wiring ----------------
