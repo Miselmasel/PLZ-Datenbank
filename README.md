@@ -173,6 +173,16 @@ Die Tests arbeiten mit kleinen, lokalen Beispieldaten (kein Netzwerkzugriff) und
 
 Die GitHub-Actions-Workflow-Datei [`.github/workflows/tests.yml`](.github/workflows/tests.yml) führt diese Tests automatisch bei jedem Push und Pull-Request auf `main` aus (Python 3.10–3.13) und prüft zusätzlich, dass `schema.sql` fehlerfrei ausgeführt werden kann.
 
+## Web-Werkzeug: PLZ-Umkreissuche
+
+Im Ordner [`webtools/plz-umkreissuche`](webtools/plz-umkreissuche) liegt eine
+eigenständige, statische Web-Anwendung: PLZ und Umkreisradius eingeben,
+Ergebnis sind alle Postleitzahlen/Orte im Radius mit Luftlinien-Entfernung
+und Einwohnerzahl. Nutzt einen eigenen, vorberechneten JSON-Datensatz
+(Geokoordinaten + Einwohnerzahlen aus separaten offenen Quellen, siehe die
+[README des Werkzeugs](webtools/plz-umkreissuche/README.md)) und ist
+unabhängig vom SQLite-Schema oben.
+
 ## Lizenzhinweis
 
 Bei Nutzung der suche-postleitzahl.org-Daten (OpenStreetMap-Mitwirkende, ODbL 1.0)
